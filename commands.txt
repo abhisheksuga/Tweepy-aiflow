@@ -2,5 +2,4 @@
 
 #Make sure that the kaggle.json file downloaded from the kaggle account as an authentication file is placed in the /.kaggle folder on your home directory
 
-
 chmod 600  kaggle.json    #Give necessary permissions 
