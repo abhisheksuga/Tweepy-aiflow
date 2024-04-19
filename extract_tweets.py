@@ -30,8 +30,3 @@ tweets = api.user_timeline(screen_name = '@katyperry',
 
 print (tweets)
 
-
-
-
-
-#https://abhi-data.s3.eu-west-1.amazonaws.com/tweets.csv 
