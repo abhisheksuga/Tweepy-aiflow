@@ -3,3 +3,4 @@ pandas == 2.0.3
 pymongo == 4.6.2
 kaggle == 1.6.12
 textblob 
+SQLAlchemy
