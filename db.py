@@ -1,5 +1,26 @@
 import psycopg2
 from config import *
+import logging
+import boto3
+from botocore.exceptions import ClientError
+import os
+
+
+def upload_file(file_name, bucket, object_name=None):
+
+    # If S3 object_name was not specified, use file_name
+    if object_name is None:
+        object_name = os.path.basename(file_name)
+
+    # Upload the file
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.upload_file(file_name, bucket, object_name)
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
+
 
 def connect_postgres(user, password, host, port, database):
     try:
@@ -15,7 +36,7 @@ def connect_postgres(user, password, host, port, database):
 
 
 
-connection = connect_postgres(postgres_user,postgres_password,postgres_host,postgres_port,postgres_database) 
+# connection = connect_postgres(postgres_user,postgres_password,postgres_host,postgres_port,postgres_database) 
 
 def create_table_postgres(table_name, schema):
     try:
@@ -41,9 +62,20 @@ def insert_csv_to_postgres(cursor, csv_file, table_name):
         print(f"error inserting data to the posgres {table_name}: {e}")
 
 
-cursor = create_table_postgres("tweets_table", schema) # This function creates a table if it doesnot exit and returns the cursor 
-insert_csv_to_postgres(cursor, "./data/tweets_after_processing.csv", "tweets_table") # using the cursor returned, this function inserts the csv data to the posgres table that we have created
+# cursor = create_table_postgres("tweets_table", schema) # This function creates a table if it doesnot exit and returns the cursor 
+# insert_csv_to_postgres(cursor, "./data/tweets_after_processing.csv", "tweets_table") # using the cursor returned, this function inserts the csv data to the posgres table that we have created
 
 
-cursor.close()
-cursor.connection.close() #Closing the connections once the transaction is done for effient utilization of resources .
+# cursor.close()
+# cursor.connection.close() #Closing the connections once the transaction is done for effient utilization of resources .
+
+file_path = './data/processed_data.csv'  
+bucket_name = 'abhi-data'  
+
+# Call the upload_file function
+success = upload_file(file_path, bucket_name)
+
+if success:
+    print("File uploaded successfully!")
+else:
+    print("Failed to upload file.")
