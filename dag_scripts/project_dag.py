@@ -1,10 +1,9 @@
-from datetime import timedelta 
+from datetime import timedelta
 from airflow import DAG  
-# from airflow.operators.python_operators import PythonOperator 
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 from datetime import datetime
-from dataset_download_kaggle_api import download_kaggle_dataset
+from project_etl import download_kaggle_dataset
 
 
 
@@ -26,13 +25,29 @@ dag = DAG(
     schedule_interval=timedelta(days=1),
 )
 
+# Task to run the mongo_insert function
 
-run_etl =PythonOperator (
-    task_id = 'data_etl',
-    python_callable = download_kaggle_dataset,  #function that i want to call 
+run_download =PythonOperator (
+    task_id = 'data_download',
+    python_callable = download_kaggle_dataset,
+     op_kwargs={
+        'dataset_name': 'mmmarchetti/tweets-dataset',
+        'download_path': './data',
+        'unzip': True
+    },
     dag = dag ,
+)
+# Task to run the mongo_insert function
+run_insert = PythonOperator(
+    task_id='insert_to_mongo',
+    python_callable=mongo_insert,
+    op_kwargs={
+        'mongo_uri': 'mongodb+srv://Admin:hGNqRUPelBqwazKk@mymongo.qxtqdes.mongodb.net/',
+        'db_name': 'tweets',
+        'collection_name': 'test'
+    },
+    dag=dag,
 )
 
 
-
-run_etl
+run_download >> run_insert
