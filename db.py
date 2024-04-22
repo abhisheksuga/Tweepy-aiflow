@@ -1,81 +1,103 @@
+import json
+import pandas as pd
+from pymongo import MongoClient
 import psycopg2
-from config import *
-import logging
-import boto3
-from botocore.exceptions import ClientError
-import os
+from sqlalchemy import create_engine   #alternate option to use, instead of psycopg2
+
+class Database:
+    def __init__(self, config_file):
+        self.config_file = config_file
+        self.load_config()
+
+    def load_config(self):
+        print("Attempting to load config file from:", self.config_file)
+        with open(self.config_file, 'r') as f:
+            self.config = json.load(f)
+        print("Config file loaded successfully.")
+
+    def connect_mongodb(self):
+        mongo_uri = self.config.get('mongo_uri')
+        db_name = self.config.get('mongo_db_name')
+        collection_name = self.config.get('mongo_collection_name')
+        try:
+            self.mongo_client = MongoClient(mongo_uri)
+            self.mongo_db = self.mongo_client[db_name]
+            self.mongo_collection = self.mongo_db[collection_name]
+            print("Connected to MongoDB successfully.")
+        except Exception as e:
+            print(f"Error connecting to MongoDB: {e}")
+
+    def fetch_data_mongodb(self):
+        try:
+            data = self.mongo_collection.find({}, {'_id': 0})
+            data_dict = [d for d in data]
+            return data_dict
+        except Exception as e:
+            print(f"Error fetching data from MongoDB: {e}")
+            return None
+
+    def connect_postgres(self):
+        postgres_user = self.config.get('postgres_user')
+        postgres_password = self.config.get('postgres_password')
+        postgres_host = self.config.get('postgres_host')
+        postgres_port = self.config.get('postgres_port')
+        postgres_database = self.config.get('postgres_database')
+        try:
+            self.postgres_connection = psycopg2.connect(user=postgres_user,
+                                                        password=postgres_password,
+                                                        host=postgres_host,
+                                                        port=postgres_port,
+                                                        database=postgres_database)
+            print("Connected to PostgreSQL successfully.")
+        except Exception as e:
+            print(f"Error connecting to PostgreSQL: {e}")
+
+    def create_table_postgres(self, table_name):
+        schema = self.config.get('postgres_schema')
+        if not schema:
+            print("Error: PostgreSQL schema not found in config file.")
+            return None
+        
+        try:
+            cursor = self.postgres_connection.cursor()
+            create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({','.join([f'{col} {data_type}' for col, data_type in schema.items()])})"
+            cursor.execute(create_table_sql)
+            self.postgres_connection.commit()
+            print(f"Table '{table_name}' created successfully.")
+            cursor.close()
+            return self.postgres_connection
+        except Exception as e:
+            print(f"Error creating table {table_name}: {e}")
+            return None
+
+    def insert_data_postgres(self, csv_file, table_name):
+        try:
+            cursor = self.postgres_connection.cursor()
+            with open(csv_file, 'r') as f:
+                cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV HEADER", f)
+
+            self.postgres_connection.commit()
+            print(f"Data from '{csv_file}' inserted into the table '{table_name}' successfully.")
+            cursor.close()
+        except Exception as e:
+            print(f"Error inserting data into PostgreSQL table {table_name}: {e}")
+
+    def close_connections(self):
+        if hasattr(self, 'mongo_client'):
+            self.mongo_client.close()
+        if hasattr(self, 'postgres_connection'):
+            self.postgres_connection.close()
 
 
-def upload_file(file_name, bucket, object_name=None):
+db = Database(config_file = 'config.json')
+# # db.connect_mongodb()
+# # mongo_data = db.fetch_data_mongodb()
 
-    # If S3 object_name was not specified, use file_name
-    if object_name is None:
-        object_name = os.path.basename(file_name)
+# db.connect_postgres()
+# postgres_table_name = 'tweets_testing'
+# db.create_table_postgres(table_name=postgres_table_name)
 
-    # Upload the file
-    s3_client = boto3.client('s3')
-    try:
-        response = s3_client.upload_file(file_name, bucket, object_name)
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
+# # csv_file = './data/processed_data.csv'
+# # db.insert_data_postgres(csv_file=csv_file, table_name=postgres_table_name)
 
-
-def connect_postgres(user, password, host, port, database):
-    try:
-        connection = psycopg2.connect(user=postgres_user,
-                                      password=postgres_password,
-                                      host=postgres_host,
-                                      port=postgres_port,
-                                      database=postgres_database)
-        return connection
-    except (Exception, psycopg2.Error) as error:
-        print("Couldn't connect to the PostgreSQL:", error)
-        return None
-
-
-
-# connection = connect_postgres(postgres_user,postgres_password,postgres_host,postgres_port,postgres_database) 
-
-def create_table_postgres(table_name, schema):
-    try:
- 
-        cursor = connection.cursor()
-        create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({schema})" # Checking if table already exits before creatring one. 
-        cursor.execute(create_table_sql) #using cursor functions to run sql queries 
-        connection.commit()
-        print(f"{table_name}' is created successfully.")
-        return cursor
-    except Exception as e:
-        print(f"Error creating table {table_name}: {e}")
-        return None
-
-def insert_csv_to_postgres(cursor, csv_file, table_name):
-    try:
-        with open(csv_file, 'r') as f:
-            cursor.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV HEADER", f) #using cursor functions to run sql queries 
-
-        cursor.connection.commit()
-        print(f"Data from '{csv_file}' inserted into the table '{table_name}' successfully.")
-    except Exception as e:
-        print(f"error inserting data to the posgres {table_name}: {e}")
-
-
-# cursor = create_table_postgres("tweets_table", schema) # This function creates a table if it doesnot exit and returns the cursor 
-# insert_csv_to_postgres(cursor, "./data/tweets_after_processing.csv", "tweets_table") # using the cursor returned, this function inserts the csv data to the posgres table that we have created
-
-
-# cursor.close()
-# cursor.connection.close() #Closing the connections once the transaction is done for effient utilization of resources .
-
-file_path = './data/processed_data.csv'  
-bucket_name = 'abhi-data'  
-
-# Call the upload_file function
-success = upload_file(file_path, bucket_name)
-
-if success:
-    print("File uploaded successfully!")
-else:
-    print("Failed to upload file.")
+# db.close_connections()
