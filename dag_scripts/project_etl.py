@@ -1,35 +1,79 @@
-from kaggle.api.kaggle_api_extended import KaggleApi
-import pandas as pd
 import json
-from datetime import datetime
-import s3fs
-import csv
-from pymongo import MongoClient
-import time
+import pandas as pd
+from db import Database
+from textblob import TextBlob
+import os
 
-# Function to download desired dataset from kaggle using kaggle api 
-def download_kaggle_dataset(dataset_name ,download_path,unzip=False) :
+class DataProcessor:
+    def __init__(self, config_file):
+        self.config_file = config_file
+        with open(self.config_file, 'r') as f:
+            self.config = json.load(f)
+        self.db_instance = Database(self.config_file)
+        self.db_instance.connect_mongodb()
 
-    try:
-        api = KaggleApi()
-        api.authenticate()
-        api.dataset_download_files(dataset_name, download_path, unzip=unzip)
-        print (f"dataset download success! find the files in {download_path} folder")
-    except Exception as e:
-        print (f"error while downloading: {e}")
+    def fetch_data_from_mongo(self):
+        return self.db_instance.fetch_data_mongodb()
 
-def mongo_insert(mongo_uri,db_name,collection_name):
-    client = MongoClient(mongo_uri)
-    db = client[db_name]
-    collection = db[collection_name]
-    start_time = time.time()
+    def process_data(self, data):
+        # Data processing steps here
+        df = pd.DataFrame(data=data)
+        df = df.drop(columns=['id', 'latitude', 'longitude', 'country'])
+        df['num_words'] = df['content'].apply(self.count_of_words)
+        df['sentiment_polarity'] = df['content'].apply(self.extract_sentiment)
+        df['sentiment_category'] = df['sentiment_polarity'].apply(self.sentiment_category)
+        df['date_time'] = pd.to_datetime(df['date_time'], format='%d/%m/%Y %H:%M')
+        df['activity_hour'] = df['date_time'].dt.hour
+        df['activity_day'] = df['date_time'].dt.dayofweek
+        df['activity_month'] = df['date_time'].dt.month
+        df['activity_year'] = df['date_time'].dt.year
+        df['engagement'] = df['number_of_likes'] + df['number_of_shares']
+        df['activity_day'] = df['activity_day'].map(self.day_mapping())
+        return df
 
-    df = pd.read_csv('./data/tweets.csv')
-    data = df.to_dict(orient='records')
-    collection.insert_many(data)
+    def write_to_csv(self, dataframe):
+        output_path = self.config.get('data_files_path')
+        #output_path = 's3://abhi-data/data/'
+        csv_file = f"{output_path}/processed_data.csv"
+        dataframe.to_csv(csv_file, index=False)
+        print(f"Processed data written to: {csv_file}")
 
-    end_time = time.time()
-    print (f"The taken to insert all the records using insert_one query is ,{end_time - start_time}")
-    client.close()
+    def count_of_words(self, content):
+        return len(content.split())
 
+    def extract_sentiment(self, content):
+        emotions = TextBlob(content)
+        return emotions.sentiment.polarity
+
+    def sentiment_category(self, polarity):
+        if polarity > 0:
+            return 'positive'
+        elif polarity < 0:
+            return 'negative'
+        else:
+            return 'neutral'
+    def day_mapping(self):
+        return {
+            0: 'Monday',
+            1: 'Tuesday',
+            2: 'Wednesday',
+            3: 'Thursday',
+            4: 'Friday',
+            5: 'Saturday',
+            6: 'Sunday'
+        }
+
+    def process_data_from_mongo(self):
+        dataframe = self.fetch_data_from_mongo()
+        if dataframe is not None:
+            processed_dataframe = self.process_data(dataframe)
+            self.write_to_csv(processed_dataframe)
+
+    def insert_csv_to_postgres(self):
+        config_file_path = 'config.json'
+        db = Database(config_file_path)
+        db.connect_postgres()
+        postgres_table_name = 'tweets_testing'
+        csv_file = 'processed_data.csv'
+        db.insert_data_postgres(csv_file, table_name=postgres_table_name)
 
