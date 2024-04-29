@@ -2,14 +2,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from db import Database
-
+import json
 class DataAnalysis:
-    def __init__(self, csv_path):
+    def __init__(self, csv_path, config_file):
         self.csv_path = csv_path
-        self.db_instance = Database('./config.json')
+        self.config_file = config_file
+        with open(self.config_file, 'r') as f:
+            self.config = json.load(f)
+        self.db_instance = Database(self.config_file)
 
     def read_csv(self):
         df = pd.read_csv(self.csv_path)
+        print(len(df))
         return df
 
     def query_psql_table(self, query):
@@ -140,5 +144,5 @@ class DataAnalysis:
         else:
             print("Query execution failed.")
 
-analysis = DataAnalysis('./data/processed_data.csv')
+analysis = DataAnalysis('./data/processed_data.csv','./config.json')
 analysis.perform_data_analysis()

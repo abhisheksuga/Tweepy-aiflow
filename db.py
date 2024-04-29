@@ -57,7 +57,7 @@ class Database:
         if not schema:
             print("Error: PostgreSQL schema not found in config file.")
             return None
-        
+
         try:
             cursor = self.postgres_connection.cursor()
             create_table_sql = f"CREATE TABLE IF NOT EXISTS {table_name} ({','.join([f'{col} {data_type}' for col, data_type in schema.items()])})"
@@ -89,7 +89,7 @@ class Database:
             self.postgres_connection.close()
 
 
-db = Database(config_file = 'config.json')
+# db = Database(config_file = 'config.json')
 # # db.connect_mongodb()
 # # mongo_data = db.fetch_data_mongodb()
 

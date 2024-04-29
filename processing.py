@@ -2,6 +2,7 @@ import json
 import pandas as pd
 from db import Database
 from textblob import TextBlob
+import os
 
 class DataProcessor:
     def __init__(self, config_file):
@@ -17,7 +18,6 @@ class DataProcessor:
     def process_data(self, data):
         # Data processing steps here
         df = pd.DataFrame(data=data)
-        print(df)
         df = df.drop(columns=['id', 'latitude', 'longitude', 'country'])
         df['num_words'] = df['content'].apply(self.count_of_words)
         df['sentiment_polarity'] = df['content'].apply(self.extract_sentiment)
@@ -33,6 +33,7 @@ class DataProcessor:
 
     def write_to_csv(self, dataframe):
         output_path = self.config.get('data_files_path')
+        #output_path = 's3://abhi-data/data/'
         csv_file = f"{output_path}/processed_data.csv"
         dataframe.to_csv(csv_file, index=False)
         print(f"Processed data written to: {csv_file}")
@@ -63,11 +64,22 @@ class DataProcessor:
             6: 'Sunday'
         }
 
-config_file_path = 'config.json'
-processor = DataProcessor(config_file_path)
+    def process_data_from_mongo(self):
+        dataframe = self.fetch_data_from_mongo()
+        if dataframe is not None:
+            processed_dataframe = self.process_data(dataframe)
+            self.write_to_csv(processed_dataframe)
+            self.insert_csv_to_postgres()
 
+    def insert_csv_to_postgres(self):
+        config_file_path = '/home/ubuntu/airflow/project_dags/config.json'
+        input_path =self.config.get('data_files_path')
+        db = Database(config_file_path)
+        db.connect_postgres()
+        csv_file = f"{input_path}/processed_data.csv"
+        postgres_table_name = 'tweets_table'
+        db.create_table_postgres(table_name=postgres_table_name)
+        db.insert_data_postgres(csv_file=csv_file, table_name=postgres_table_name)
+        db.close_connections()
+        print(f"Processed data inserted on to the postgres table : {csv_file}")
 
-dataframe = processor.fetch_data_from_mongo()
-if dataframe is not None:
-    processed_dataframe = processor.process_data(dataframe)
-    processor.write_to_csv(processed_dataframe)
