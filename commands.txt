@@ -2,5 +2,17 @@
 
 #Make sure that the kaggle.json file downloaded from the kaggle account as an authentication file is placed in the /.kaggle folder on your home directory
 
-
 chmod 600  kaggle.json    #Give necessary permissions 
+
+ #To set aws env variables for s3 access while pushing the data on to the s3 bucket .
+
+
+
+
+#to change user permission on server
+sudo chown ubuntu:ubuntu analysis.py 
+
+
+sudo apt install feh  #for displaying png files on server 
+
+sudo apt install xvfb
