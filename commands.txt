@@ -4,8 +4,15 @@
 
 chmod 600  kaggle.json    #Give necessary permissions 
 
-#to change user permission on server for a paricular file 
+ #To set aws env variables for s3 access while pushing the data on to the s3 bucket .
 
+export AWS_ACCESS_KEY_ID="ASIATUYJP7SULMHYW2AR"
+export AWS_SECRET_ACCESS_KEY="/YQlR9Vm306XhidwLy4QDzbFRZ5qJEK41jdajDpj"
+export AWS_SESSION_TOKEN="IQoJb3JpZ2luX2VjENj//////////wEaCXVzLWVhc3QtMSJHMEUCIEmNtWsRODn5FVblginJoggfFCcBV3Luwve7W7hgVXzKAiEA//wymO3dUFrsdgSroEMxxQVH9f4rKDfii/0cD20xK0Eq/QMIIRADGgwyNTA3Mzg2Mzc5OTIiDCtLqVVNxUiyKOKNvyraA6pqjqAYg8HL0Pqs8qpGlaowqfOnIHHgch6xXFAFSuArCV3NCjjf6rGdJlnlxPYycfn7tCPXtlGU7cIj1qa6W7JjWnHcHFmhO7ZJXil17PtkTiVUDbcKWbnNeFgErcsjHasxjPbkWsA6PD3n4sW5v+iduaB0b7+S8PrfITFBsx8H3GKFbn+ELSh5u0NRHMkBwtzw88THTOMsR1uosFNxqn+0PLEQ1Yw3x0gyld3YiuniJC8BYkUgkOTxso7cm+iCE/lgUaZ4NRZN13Ay+8jPh3FA4lb/evdq0Gi4FQRG+0P4qDwCuH9TKOk8H22kF9GvKu2QGEmgZLS+SOQCozCwfTDALDrvrMXWTngkx5mIAMeCDjVWCdNuB3fieTLd1Bcul/LFkurQ3BXOEgiQIPPcAEdySl7CNajjTW/Yz4Y637Picsd0xKNBvQGxOUTbNXDfJ8rxZ8TaCeV/2Nj94l9FFRGLC2LeMsD12nzk4c/Wu0nmqBsFVNEPuTSOUSpOWkOEEVZ4u81PgX9h1umw1W6qibEdCtzGs/3T2jH8JP3xSLiLFo5OBPf21mSfUKahfMTM5AuGIj3bndKYv0GVTdKTZO3OR9/RFocDqISVSb1d23WSBIEi99YtnRPrOzCe/IuxBjqmAZ7dtAp+Q2EUpMbUCsjGRMxyrIVmB3yhje4xZyz9D9TGHnIE28as4mbfkADaZj1ISzWO+0UATgQFf6fJVXUvRKoGXYG/H9ZtULjIdon/0pYjk6/rZi0wb+3M/V0vNhOV33UMGrn1qtYRMYVfmFS+kGBwmMWak+oxtcj+JPLvK5tswoa7ZFf0ycQ9334JXrE0wHhVcj5DQGZdMpLR5S8FLEWEg/DvRgo="
+
+
+
+#to change user permission on server
 sudo chown ubuntu:ubuntu analysis.py 
 
 
